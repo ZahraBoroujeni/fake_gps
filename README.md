@@ -8,7 +8,7 @@ localize a model car using colored lamp at roof
 
 * calibrate system to find desired colors (using cmvison package in ROS)
 
-* find the X/Y scale factor of image  (real map / image)
+* find the X and Y scale factors of image  (real map / image)
 
 ##run steps:
 
