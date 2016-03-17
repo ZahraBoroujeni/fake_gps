@@ -47,8 +47,6 @@ Visualization Manager:
         All Enabled: true
         Features_markers:
           Value: true
-        camera:
-          Value: true
         world:
           Value: true
       Marker Scale: 1
@@ -59,8 +57,6 @@ Visualization Manager:
       Tree:
         world:
           Features_markers:
-            {}
-          camera:
             {}
       Update Interval: 0
       Value: true

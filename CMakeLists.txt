@@ -80,7 +80,7 @@ add_library(kalman
 
 ## Declare a cpp executable
 add_executable(fake_gps_node src/fake_gps_node.cpp)
-#add_executable(tf_without_kalman_node src/tf_without_kalman_node.cpp)
+add_executable(fake_gps_3d_node src/fake_gps_3d_node.cpp)
 
 
 ## Add cmake target dependencies of the executable/library
@@ -88,6 +88,10 @@ add_executable(fake_gps_node src/fake_gps_node.cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(fake_gps_node
+   ${catkin_LIBRARIES}
+   kalman
+)
+target_link_libraries(fake_gps_3d_node
    ${catkin_LIBRARIES}
    kalman
 )
