@@ -10,7 +10,7 @@
 #include <std_msgs/String.h>
 #include "kalman.h"
 
-#include "slam/Transform.h"
+#include "fake_gps/Transform.h"
 #include <Eigen/Eigen>
 #include <cmvision/Blobs.h>
 
@@ -77,7 +77,7 @@ class online_tf
                 max_id=marker_id[i];
         }
 
-        pub_transform_= nh.advertise<slam::Transform>(nh.resolveName("transform"), 10);
+        pub_transform_= nh.advertise<fake_gps::Transform>(nh.resolveName("transform"), 10);
         pub_markers_= nh.advertise<visualization_msgs::MarkerArray>(nh.resolveName("/Features_markers"), 1);
         
         read_map_coordinates(map_file_path,max_id);
@@ -254,7 +254,7 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
     tr.setRotation( tf::Quaternion(transfParameters(3),transfParameters(4),transfParameters(5),transfParameters(6)));
 
 
-    slam::Transform msg_t;
+    fake_gps::Transform msg_t;
 
     msg_t.header.stamp = ros::Time::now();
 
