@@ -1,1 +1,14 @@
 # fake_gps
+
+calibration Steps:
+	*find distortion_model of camera and calibrate camera (calibrate_camera package in ROS)
+	*calibrate system to find desired colors (using cmvison package in ROS)
+	*find the X/Y scale factor of image  (real map / image)
+run steps:
+	*read calibrated image (using usb_cam and image_proc packages in ROS)
+	*find the colored lamps (using cmvison package in ROS)
+	*filter the blobs and find the biggest one (using detect_roof_rectangles package in ROS)
+	*use optimal rigid body algorithm and kalman filter to find the transformation between map and position of camera which defines the location of camera/car (using fake_gps package in ROS) 
+
+https://github.com/ZahraBoroujeni/fake_gps
+https://github.com/neumann89/detect_roof_rectangles
