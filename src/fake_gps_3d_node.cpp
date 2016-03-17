@@ -247,7 +247,7 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
         transfParameters=filter.update(startP);
     }
 
-    OptimalRigidTransformation(finalP,startP);
+    // OptimalRigidTransformation(finalP,startP);
     tr.setOrigin( tf::Vector3(transfParameters(0)/1000,transfParameters(1)/1000,transfParameters(2)/1000));
     tr.setRotation( tf::Quaternion(transfParameters(3),transfParameters(4),transfParameters(5),transfParameters(6)));
 
