@@ -8,7 +8,7 @@
 #include "tf/transform_datatypes.h"
 #include <visualization_msgs/MarkerArray.h>
 #include <std_msgs/String.h>
-#include "kalman.h"
+#include "kalman_3d.h"
 
 #include "fake_gps/Transform.h"
 #include <Eigen/Eigen>
@@ -234,24 +234,24 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
     //     ROS_INFO(" id %i,start %G= final %G\n",i,startP(i,2),finalP(i,2));
     // }
     
-    if (filter.getFirst()==0)
-    {   
-        filter.setFirst(1);
-        OptimalRigidTransformation(finalP,startP);
-        filter.setKalman_x(transfParameters);
-       // printf("%f\n", transfParameters(0));
+    // if (filter.getFirst()==0)
+    // {   
+    //     filter.setFirst(1);
+    //     OptimalRigidTransformation(finalP,startP);
+    //     filter.setKalman_x(transfParameters);
+    //    // printf("%f\n", transfParameters(0));
 
 
-    }       
-    else
-    {   
+    // }       
+    // else
+    // {   
         
-        //OptimalRigidTransformation(finalP,startP);
-        filter.prediction(finalP);      
-        transfParameters=filter.update(startP);
-    }
+    //     //OptimalRigidTransformation(finalP,startP);
+    //     filter.prediction(finalP);      
+    //     transfParameters=filter.update(startP);
+    // }
 
-   // OptimalRigidTransformation(finalP,startP);
+    OptimalRigidTransformation(finalP,startP);
     tr.setOrigin( tf::Vector3(transfParameters(0),transfParameters(1),transfParameters(2)));
     tr.setRotation( tf::Quaternion(transfParameters(3),transfParameters(4),transfParameters(5),transfParameters(6)));
 
@@ -297,8 +297,8 @@ void online_tf::OptimalRigidTransformation(Eigen::MatrixXd startP, Eigen::Matrix
     Eigen::MatrixXd U = svd.matrixU();
     Eigen::MatrixXd V = svd.matrixV();
   
-     if (V.determinant()<0)
-         V.col(1)=-V.col(1)*(-1);
+     // if (V.determinant()<0)
+     //     V.col(2)=-V.col(2)*(-1);
 
     Eigen::MatrixXd R=V*U.transpose();
 

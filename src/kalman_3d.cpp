@@ -1,4 +1,4 @@
-#include "kalman.h"
+#include "kalman_3d.h"
 
 
 kalman::kalman()
@@ -74,7 +74,7 @@ kalman::kalman()
 
 Eigen::VectorXd kalman::update(Eigen::MatrixXd finalP)
 {  
-    Eigen::MatrixXd kalman_W = Eigen::MatrixXd::Identity(3*finalP.rows(),3*finalP.rows())*0.1;
+    Eigen::MatrixXd kalman_W = Eigen::MatrixXd::Identity(3*finalP.rows(),3*finalP.rows())*0.3;
     Eigen::MatrixXd kalman_S(3*finalP.rows(),3*finalP.rows());
     Eigen::VectorXd kalman_y(3*finalP.rows());
     Eigen::MatrixXd kalman_K(7,3*finalP.rows());

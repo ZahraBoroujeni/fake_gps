@@ -8,7 +8,7 @@
 #include "tf/transform_datatypes.h"
 #include <visualization_msgs/MarkerArray.h>
 #include <std_msgs/String.h>
-#include "kalman.h"
+#include "kalman_2d.h"
 
 #include "fake_gps/Transform.h"
 #include <Eigen/Eigen>
@@ -44,6 +44,7 @@ class online_tf
     
 
     kalman filter;
+    Eigen::VectorXd kalman_result;
 
     Eigen::VectorXd transfParameters;
     void read_map_coordinates(std::string,int);
@@ -170,21 +171,7 @@ void online_tf::read_map_coordinates(std::string map_file_path,int max_id)
 // this function is called when a new message is received at the topic_name_you_want_to_subscribe_to
 void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
 {   tf::Transform tr;
-   
-    /*
-    for (int i=0;i<msg.markers.size();i++)
-    {   //check if the markers id is in the list and if it has not be read yet
-        if((find(marker_id.begin(), marker_id.end(), msg.markers[i].id) != marker_id.end())) // && read_points((msg.markers[i].id,0)==0))   
-        //if (read_points((msg.markers[i].id,0)==0))
-        {   read_points(numrows,0)=msg.markers[i].id;
-            read_points(numrows,1)=msg.markers[i].pose.position.x;
-            read_points(numrows,2)=msg.markers[i].pose.position.y;
-            read_points(numrows,3)=msg.markers[i].pose.position.z;
-            numrows++;
-        }
-
-    }   */
-
+   //pub_markers_.publish(feature_markers_);
     if (blobsIn.blob_count<2)
         return;
     std::vector<Eigen::Vector2d> read_points;//=map_points.block(0,0,numrows,2);
@@ -198,13 +185,16 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
         // TODO: rule to drop false positives?
 
         if (blobsIn.blobs[i].name=="RedRectangle")
-            read_points.push_back(Eigen::Vector2d(map_points(0,0),map_points(0,1)*1.14).transpose());
+            read_points.push_back(Eigen::Vector2d(map_points(0,0),map_points(0,1)).transpose());
         else if (blobsIn.blobs[i].name=="BlueRectangle")
-            read_points.push_back(Eigen::Vector2d(map_points(1,0),map_points(1,1)*1.14).transpose());
+            read_points.push_back(Eigen::Vector2d(map_points(1,0),map_points(1,1)).transpose());
         else if (blobsIn.blobs[i].name=="GreenRectangle")
-            read_points.push_back(Eigen::Vector2d(map_points(2,0),map_points(2,1)*1.14).transpose());
+            read_points.push_back(Eigen::Vector2d(map_points(2,0),map_points(2,1)).transpose());
+        float x_normalized=(blobsIn.blobs[i].x-320.0)*(134.0/320);
+        float y_normalized=(blobsIn.blobs[i].y-240.0)*(94.0/240);
 
-        camera_points.push_back(Eigen::Vector2d(blobsIn.blobs[i].x,blobsIn.blobs[i].y*1.14).transpose());
+        camera_points.push_back(Eigen::Vector2d(x_normalized,y_normalized).transpose());
+        ROS_INFO("here %i,%G=%G\n",i,camera_points[i][0],read_points[i][0]);
        
        
     }
@@ -236,21 +226,26 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
     // {   
     //     filter.setFirst(1);
     //     OptimalRigidTransformation(finalP,startP);
-    //     filter.setKalman_x(transfParameters);
+    //      ROS_INFO("here ");
+    //     filter.setKalman_x(Eigen::Vector3d(transfParameters(0),transfParameters(1),transfParameters(5)));
     //    // printf("%f\n", transfParameters(0));
-
-
     // }       
     // else
     // {   
-        
     //     //OptimalRigidTransformation(finalP,startP);
-    //     filter.prediction(finalP);      
-    //     transfParameters=filter.update(startP);
+    //     filter.prediction(startP);
+    //     kalman_result=filter.update(finalP);
+    //     float yaw_ =kalman_result[3];
+    //     Eigen::Matrix3d matYaw = Eigen::Matrix3d::Zero();
+    //     matYaw << cos(yaw_), -sin(yaw_), 0.0f,
+    //     sin(yaw_), cos(yaw_), 0.0f,  //z
+    //     0.0f, 0.0f, 1.0f;
+    //     Eigen::Quaterniond mat_rot(matYaw);
+    //     transfParameters<<kalman_result[0],kalman_result[1],0,mat_rot.x(),mat_rot.y(),mat_rot.z(),mat_rot.w();
     // }
 
     OptimalRigidTransformation(finalP,startP);
-    tr.setOrigin( tf::Vector3(transfParameters(0)/1000,transfParameters(1)/1000,transfParameters(2)/1000));
+    tr.setOrigin( tf::Vector3(transfParameters(0),transfParameters(1),transfParameters(2)));
     tr.setRotation( tf::Quaternion(transfParameters(3),transfParameters(4),transfParameters(5),transfParameters(6)));
 
 
@@ -296,7 +291,7 @@ void online_tf::OptimalRigidTransformation(Eigen::MatrixXd startP, Eigen::Matrix
     Eigen::MatrixXd V = svd.matrixV();
   
     // if (V.determinant()<0)
-    //     V.col(1)=-V.col(1)*(-1);
+    //     V.col(2)=-V.col(2)*(-1);
 
     Eigen::MatrixXd R=V*U.transpose();
 
@@ -315,12 +310,12 @@ void online_tf::OptimalRigidTransformation(Eigen::MatrixXd startP, Eigen::Matrix
     //std::cout<<"trans: "<<transf<<std::endl;
 
     Eigen::Quaterniond mat_rot(transf.block<3,3>(0,0));
-
+    Eigen::Vector3d RPY;
+    RPY=transf.block<3,3>(0,0).eulerAngles(0, 1, 2); 
     Eigen::Vector3d trasl=transf.block<3,1>(0,3).transpose();
 
     transfParameters<<trasl(0),trasl(1),trasl(2),mat_rot.x(),mat_rot.y(),mat_rot.z(),mat_rot.w();
-
-
+    //kalman_result<<trasl(0),trasl(1),RPY[2];
 }
 
 } // namespace package_name

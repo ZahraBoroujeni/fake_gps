@@ -73,13 +73,15 @@ include_directories(include
 )
 
 ## Declare a cpp library
-
-add_library(kalman
-  src/Kalman.cpp
+add_library(kalman_2d
+  src/kalman_2d.cpp
+)
+add_library(kalman_3d
+  src/kalman_3d.cpp
 )
 
 ## Declare a cpp executable
-add_executable(fake_gps_node src/fake_gps_node.cpp)
+add_executable(fake_gps_2d_node src/fake_gps_2d_node.cpp)
 add_executable(fake_gps_3d_node src/fake_gps_3d_node.cpp)
 
 
@@ -87,13 +89,13 @@ add_executable(fake_gps_3d_node src/fake_gps_3d_node.cpp)
 ## as an example, message headers may need to be generated before nodes
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(fake_gps_node
+target_link_libraries(fake_gps_2d_node
    ${catkin_LIBRARIES}
-   kalman
+   kalman_2d
 )
 target_link_libraries(fake_gps_3d_node
    ${catkin_LIBRARIES}
-   kalman
+   kalman_3d
 )
 #############
 ## Install ##

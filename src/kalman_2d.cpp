@@ -1,4 +1,4 @@
-#include "kalman.h"
+#include "kalman_2d.h"
 
 
 kalman::kalman()
@@ -6,18 +6,9 @@ kalman::kalman()
    //inizialize the dimension of the matrices 
     //Eigen::MatrixXd kalman_V(3,3);
     kalman_V=Eigen::MatrixXd::Identity(3,3);
-    kalman_V <<0.00,0,0,0,0.07,0,0,0,0.07;
-    //kalman_W=Eigen::MatrixXd::Identity(3*startP.rows(),3*startP.rows());
+    kalman_V <<0.07,0,0,0,0.07,0,0,0,0.07;
     kalman_P=Eigen::MatrixXd::Zero(3,3);
-
-     
-    //kalman_K=Eigen::MatrixXd::Zeros(7,3*startP.rows());
-    //kalman_y= Eigen::VectorXd::Identity(3*startP.rows());
-   // kalman_S=Eigen::MatrixXd::Identity(3*startP.rows(),3*startP.rows()); 
-   // kalman_x=OptimalRigidTransformation(startP,finalP);
-
     first=0;
-
 }
 
 
@@ -26,9 +17,10 @@ kalman::kalman()
  {
     kalman_P +=kalman_V;
     double Fx,Fy,Fz;
-    double theta=kalman_x[0];
-    double tx=kalman_x[1];
-    double ty=kalman_x[2];
+
+    double tx=kalman_x[0];
+    double ty=kalman_x[1];
+    double theta=kalman_x[2];
     
     kalman_h.resize(2*startP.rows());
     kalman_H.resize(2*startP.rows(),3);
@@ -36,7 +28,6 @@ kalman::kalman()
     for (int i=0;i<startP.rows();i++){
         Fx=startP(i,0);
         Fy=startP(i,1);
-        Fz=startP(i,2);
        // ROS_INFO("%i=%G\n",i,Fx);
         // kalman_h(2*i)=(Fx-tx)+theta*(Fy-ty);
         // kalman_h(2*i+1)=-theta*(Fx-tx)+(Fy-ty);
@@ -52,17 +43,16 @@ kalman::kalman()
 
 
 
-        kalman_h(2*i)=cos(theta)*Fx+sin(theta)*Fy-tx;
-        kalman_h(2*i+1)=-sin(theta)*Fx+cos(theta)*Fy-ty;
-
-
-        kalman_H(2*i,0)=sin(theta)*Fx-cos(theta)*Fy;
-        kalman_H(2*i,1)=-1;
-        kalman_H(2*i,2)=0;
-           
-        kalman_H(2*i+1,0)=cos(theta)*Fx+sin(theta)*Fy;
-        kalman_H(2*i+1,1)=0;
-        kalman_H(2*i+1,2)=-1;
+        kalman_h(2*i)=cos(theta)*Fx-sin(theta)*Fy+tx;
+        kalman_h(2*i+1)=sin(theta)*Fx+cos(theta)*Fy+ty;
+   
+        kalman_H(2*i,0)=1;
+        kalman_H(2*i,1)=0;
+        kalman_H(2*i,2)=sin(theta)*Fx+cos(theta)*Fy;
+             
+        kalman_H(2*i+1,0)=0;
+        kalman_H(2*i+1,1)=1;
+        kalman_H(2*i+1,2)=-cos(theta)*Fx+sin(theta)*Fy;
 
     }
 }
@@ -75,7 +65,7 @@ kalman::kalman()
 
 Eigen::VectorXd kalman::update(Eigen::MatrixXd finalP)
 {  
-    Eigen::MatrixXd kalman_W = Eigen::MatrixXd::Identity(2*finalP.rows(),2*finalP.rows())*0.001;
+    Eigen::MatrixXd kalman_W = Eigen::MatrixXd::Identity(2*finalP.rows(),2*finalP.rows())*0.3;
     Eigen::MatrixXd kalman_S(2*finalP.rows(),2*finalP.rows());
     Eigen::VectorXd kalman_y(2*finalP.rows());
     Eigen::MatrixXd kalman_K(3,2*finalP.rows());
