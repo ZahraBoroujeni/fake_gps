@@ -190,23 +190,23 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
             read_points.push_back(Eigen::Vector2d(map_points(1,0),map_points(1,1)).transpose());
         else if (blobsIn.blobs[i].name=="GreenRectangle")
             read_points.push_back(Eigen::Vector2d(map_points(2,0),map_points(2,1)).transpose());
-        float x_normalized=(blobsIn.blobs[i].x-320.0)*(134.0/320);
-        float y_normalized=(blobsIn.blobs[i].y-240.0)*(94.0/240);
+        double x_normalized=(blobsIn.blobs[i].x-320.0)*(134.0/320);
+        double y_normalized=(blobsIn.blobs[i].y-240.0)*(94.0/240);
 
         camera_points.push_back(Eigen::Vector2d(x_normalized,y_normalized).transpose());
-        ROS_INFO("here %i,%G=%G\n",i,camera_points[i][0],read_points[i][0]);
-       
+        ROS_INFO("here %i x,%G=%G\n",i,camera_points[i][0],read_points[i][0]);
+        ROS_INFO("here %i y,%G=%G\n",i,camera_points[i][1],read_points[i][1]);
        
     }
     
     Eigen::MatrixXd startP, finalP;
-    startP.resize(blobsIn.blob_count, 2);
-    finalP.resize(blobsIn.blob_count, 2);
+    startP.resize(blobsIn.blob_count, 3);
+    finalP.resize(blobsIn.blob_count, 3);
 
     for(int i = 0; i < blobsIn.blob_count; ++i)
     {
-        startP.row(i) = read_points[i];
-        finalP.row(i) = camera_points[i];
+        startP.row(i) = [read_points[i][0],read_points[i][1],0];
+        finalP.row(i) = [camera_points[i][0],camera_points[i][1],0];
     }
     for (int i=0;i<numrows;i++)
     {
@@ -262,7 +262,7 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
 
 void online_tf::OptimalRigidTransformation(Eigen::MatrixXd startP, Eigen::MatrixXd finalP)
 {   
-    Eigen::Matrix4d transf;
+    Eigen::Matrix4d transf=Eigen::Matrix4d::Identity();
     
     if (startP.rows()!=finalP.rows())
     {   ROS_ERROR("The number of rows of startP and finalP have to be the same");
@@ -295,17 +295,20 @@ void online_tf::OptimalRigidTransformation(Eigen::MatrixXd startP, Eigen::Matrix
 
     Eigen::MatrixXd R=V*U.transpose();
 
-    Eigen::Matrix4d C_A = Eigen::Matrix4d::Identity();
-    Eigen::Matrix4d C_B = Eigen::Matrix4d::Identity();
-    Eigen::Matrix4d R_new = Eigen::Matrix4d::Identity();
+    Eigen::Matrix3d C_A = Eigen::Matrix3d::Identity();
+    Eigen::Matrix3d C_B = Eigen::Matrix3d::Identity();
+    Eigen::Matrix3d R_new = Eigen::Matrix3d::Identity();
             
-    C_A.block<2,1>(0,3)=-centroid_startP.transpose();
+    C_A.block<2,1>(0,2)=-centroid_startP.transpose();
     R_new.block<2,2>(0,0)=R;
     
-    C_B.block<2,1>(0,3)=centroid_finalP.transpose();
+    C_B.block<2,1>(0,2)=centroid_finalP.transpose();
 
+    Eigen::Matrix3d transf_;
+    transf_ = C_B * R_new * C_A;
 
-    transf = C_B * R_new * C_A;
+    transf.block<2,2>(0,0)=transf_.block<2,2>(0,0);
+    transf.block<2,1>(2,0)=transf_.block<2,1>(2,0);
 
     //std::cout<<"trans: "<<transf<<std::endl;
 

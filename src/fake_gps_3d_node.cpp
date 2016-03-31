@@ -8,6 +8,7 @@
 #include "tf/transform_datatypes.h"
 #include <visualization_msgs/MarkerArray.h>
 #include <std_msgs/String.h>
+#include "geometry_msgs/Transform.h"
 #include "kalman_3d.h"
 
 #include "fake_gps/Transform.h"
@@ -75,7 +76,7 @@ class online_tf
                 max_id=marker_id[i];
         }
 
-        pub_transform_= nh.advertise<fake_gps::Transform>(nh.resolveName("transform"), 10);
+        pub_transform_= nh.advertise<geometry_msgs::Transform>(nh.resolveName("transform"), 10);
         pub_markers_= nh.advertise<visualization_msgs::MarkerArray>(nh.resolveName("/Features_markers"), 1);
         
         read_map_coordinates(map_file_path,max_id);
@@ -201,8 +202,8 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
             read_points.push_back(Eigen::Vector3d(map_points(1,0),map_points(1,1),0).transpose());
         else if (blobsIn.blobs[i].name=="GreenRectangle")
             read_points.push_back(Eigen::Vector3d(map_points(2,0),map_points(2,1),0).transpose());
-        float x_normalized=(blobsIn.blobs[i].x-320.0)*(134.0/320);
-        float y_normalized=(blobsIn.blobs[i].y-240.0)*(94.0/240);
+        double x_normalized=(blobsIn.blobs[i].x-320.0)*(243.0/320);
+        double y_normalized=(blobsIn.blobs[i].y-240.0)*(169.0/240);
 
         camera_points.push_back(Eigen::Vector3d(x_normalized,y_normalized,0).transpose());
         ROS_INFO("here %i,%G=%G\n",i,camera_points[i][0],read_points[i][0]);
@@ -256,11 +257,12 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
     tr.setRotation( tf::Quaternion(transfParameters(3),transfParameters(4),transfParameters(5),transfParameters(6)));
 
 
-    fake_gps::Transform msg_t;
+    geometry_msgs::Transform msg_t;
 
-    msg_t.header.stamp = ros::Time::now();
+   // msg_t.header.stamp = ros::Time::now();
 
-    tf::transformTFToMsg(tr,msg_t.Transf);
+    //tf::transformTFToMsg(tr,msg_t.Transf);
+    tf::transformTFToMsg(tr,msg_t);
     pub_transform_.publish(msg_t);
 
     tf_broadcaster_.sendTransform(tf::StampedTransform(tr, ros::Time::now(), start_frame.c_str(), end_frame.c_str()));
@@ -296,11 +298,13 @@ void online_tf::OptimalRigidTransformation(Eigen::MatrixXd startP, Eigen::Matrix
    
     Eigen::MatrixXd U = svd.matrixU();
     Eigen::MatrixXd V = svd.matrixV();
-  
-     // if (V.determinant()<0)
-     //     V.col(2)=-V.col(2)*(-1);
-
     Eigen::MatrixXd R=V*U.transpose();
+     if (R.determinant()<0)
+         V.col(2)=V.col(2)*(-1);
+     
+     R=V*U.transpose();
+
+
 
     Eigen::Matrix4d C_A = Eigen::Matrix4d::Identity();
     Eigen::Matrix4d C_B = Eigen::Matrix4d::Identity();
