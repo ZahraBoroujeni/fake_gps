@@ -76,7 +76,7 @@ class online_tf
                 max_id=marker_id[i];
         }
 
-        pub_transform_= nh.advertise<geometry_msgs::Transform>(nh.resolveName("transform"), 10);
+        pub_transform_= nh.advertise<geometry_msgs::Transform>(nh.resolveName("Transform"), 10);
         pub_markers_= nh.advertise<visualization_msgs::MarkerArray>(nh.resolveName("/Features_markers"), 1);
         
         read_map_coordinates(map_file_path,max_id);
@@ -184,7 +184,7 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
 
     }   */
 
-    if (blobsIn.blob_count<2)
+    if (blobsIn.blob_count<3)
         return;
     std::vector<Eigen::Vector3d> read_points;//=map_points.block(0,0,numrows,2);
 

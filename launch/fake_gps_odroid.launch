@@ -1,7 +1,7 @@
 <launch>
   <!-- args = list of led id -->
 	<node name="usb_cam" pkg="usb_cam" type="usb_cam_node" required="true" output="screen">
-		<param name="video_device" value="/dev/video2" />
+		<param name="video_device" value="/dev/video0" />
 		<param name="image_width" value="640" />
 		<param name="image_height" value="480" />
 		<param name="pixel_format" value="yuyv" />
@@ -40,4 +40,9 @@
     <param name="end_frame" value="/camera"/>
   </node>
     <node pkg="tf" type="static_transform_publisher" name="ftsensor_FRAME" args="0 0 0 0 0 0 /world /Features_markers 500" />
+<param name="motor_serial_port" value="/dev/ttyUSB2" />
+        <param name="motor_baud_rate" value="9600" />
+        <param name="servo_serial_port" value="/dev/ttyUSB3" />
+        <param name="servo_baud_rate" value="115200" />
+        <node pkg="manual_control" type="manual_control_node" name="manual_control" output="screen"/>
 </launch>
