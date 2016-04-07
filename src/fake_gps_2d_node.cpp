@@ -9,6 +9,7 @@
 #include <visualization_msgs/MarkerArray.h>
 #include <std_msgs/String.h>
 #include "kalman_2d.h"
+#include <math.h>
 
 #include "fake_gps/Transform.h"
 #include <Eigen/Eigen>
@@ -191,7 +192,7 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
         else if (blobsIn.blobs[i].name=="GreenRectangle")
             read_points.push_back(Eigen::Vector2d(map_points(2,0),map_points(2,1)).transpose());
         double x_normalized=(blobsIn.blobs[i].x-320.0)*(134.0/320);
-        double y_normalized=(blobsIn.blobs[i].y-240.0)*(94.0/240);
+        double y_normalized=(240.0-blobsIn.blobs[i].y)*(94.0/240);
 
         camera_points.push_back(Eigen::Vector2d(x_normalized,y_normalized).transpose());
         ROS_INFO("here %i x,%G=%G\n",i,camera_points[i][0],read_points[i][0]);
@@ -200,19 +201,13 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
     }
     
     Eigen::MatrixXd startP, finalP;
-    startP.resize(blobsIn.blob_count, 3);
-    finalP.resize(blobsIn.blob_count, 3);
+    startP.resize(blobsIn.blob_count, 2);
+    finalP.resize(blobsIn.blob_count, 2);
 
     for(int i = 0; i < blobsIn.blob_count; ++i)
     {
-        startP.row(i) = [read_points[i][0],read_points[i][1],0];
-        finalP.row(i) = [camera_points[i][0],camera_points[i][1],0];
-    }
-    for (int i=0;i<numrows;i++)
-    {
-       
-    //appo.row(i)=map_points.row(camera_points(i,0));
-        //ROS_INFO("inja %i,%G=%G\n",i,camera_points(i,0),read_points(i,0));
+        startP.row(i) = read_points[i];
+        finalP.row(i) = camera_points[i];
     }
     
     // for (int i=0;i<numrows;i++)
@@ -255,6 +250,7 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
 
     tf::transformTFToMsg(tr,msg_t.Transf);
     pub_transform_.publish(msg_t);
+    pub_markers_.publish(feature_markers_);
 
     tf_broadcaster_.sendTransform(tf::StampedTransform(tr, ros::Time::now(), start_frame.c_str(), end_frame.c_str()));
  
@@ -262,8 +258,6 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
 
 void online_tf::OptimalRigidTransformation(Eigen::MatrixXd startP, Eigen::MatrixXd finalP)
 {   
-    Eigen::Matrix4d transf=Eigen::Matrix4d::Identity();
-    
     if (startP.rows()!=finalP.rows())
     {   ROS_ERROR("The number of rows of startP and finalP have to be the same");
         exit(1);
@@ -271,53 +265,30 @@ void online_tf::OptimalRigidTransformation(Eigen::MatrixXd startP, Eigen::Matrix
 
     Eigen::RowVector2d centroid_startP=Eigen::RowVector2d::Zero(); 
     Eigen::RowVector2d centroid_finalP=Eigen::RowVector2d::Zero(); //= mean(B);
-    Eigen::Matrix2d H = Eigen::Matrix2d::Zero();
-
+    double numerator,denominator,yaw;
     //calculate the mean
     for (int i=0;i<startP.rows();i++)
     {   centroid_startP=centroid_startP+startP.row(i);
         centroid_finalP=centroid_finalP+finalP.row(i);
+        numerator= numerator+(finalP(i,0)*startP(i,1)-finalP(i,1)*startP(i,0));
+        denominator=denominator+(finalP(i,0)*startP(i,0)+finalP(i,1)*startP(i,1));
     }
     
     centroid_startP=centroid_startP/startP.rows();
     centroid_finalP=centroid_finalP/startP.rows();
-
-    for (int i=0;i<startP.rows();i++)
-        H=H+(startP.row(i)-centroid_startP).transpose()*(finalP.row(i)-centroid_finalP);
-
-    Eigen::JacobiSVD<Eigen::MatrixXd> svd(H, Eigen::ComputeFullU | Eigen::ComputeFullV);
-   
-    Eigen::MatrixXd U = svd.matrixU();
-    Eigen::MatrixXd V = svd.matrixV();
-  
-    // if (V.determinant()<0)
-    //     V.col(2)=-V.col(2)*(-1);
-
-    Eigen::MatrixXd R=V*U.transpose();
-
-    Eigen::Matrix3d C_A = Eigen::Matrix3d::Identity();
-    Eigen::Matrix3d C_B = Eigen::Matrix3d::Identity();
-    Eigen::Matrix3d R_new = Eigen::Matrix3d::Identity();
+    Eigen::RowVector2d trasl;
+    trasl=centroid_finalP-centroid_startP;
+    yaw=atan2(numerator,denominator);
             
-    C_A.block<2,1>(0,2)=-centroid_startP.transpose();
-    R_new.block<2,2>(0,0)=R;
+  
+    ROS_INFO("yaw %G: x %G: y %G:",yaw,trasl(0),trasl(1));
+
     
-    C_B.block<2,1>(0,2)=centroid_finalP.transpose();
+	tf::Quaternion mat_rot;  
+    mat_rot.setRPY(0,0,yaw);
 
-    Eigen::Matrix3d transf_;
-    transf_ = C_B * R_new * C_A;
 
-    transf.block<2,2>(0,0)=transf_.block<2,2>(0,0);
-    transf.block<2,1>(2,0)=transf_.block<2,1>(2,0);
-
-    //std::cout<<"trans: "<<transf<<std::endl;
-
-    Eigen::Quaterniond mat_rot(transf.block<3,3>(0,0));
-    Eigen::Vector3d RPY;
-    RPY=transf.block<3,3>(0,0).eulerAngles(0, 1, 2); 
-    Eigen::Vector3d trasl=transf.block<3,1>(0,3).transpose();
-
-    transfParameters<<trasl(0),trasl(1),trasl(2),mat_rot.x(),mat_rot.y(),mat_rot.z(),mat_rot.w();
+    transfParameters<<trasl(0),trasl(1),0,mat_rot.x(),mat_rot.y(),mat_rot.z(),mat_rot.w();
     //kalman_result<<trasl(0),trasl(1),RPY[2];
 }
 
