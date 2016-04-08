@@ -192,7 +192,7 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
         else if (blobsIn.blobs[i].name=="GreenRectangle")
             read_points.push_back(Eigen::Vector2d(map_points(2,0),map_points(2,1)).transpose());
         double x_normalized=(blobsIn.blobs[i].x-320.0)*(0.8);//261 cm/310 pixel
-        double y_normalized=(blobsIn.blobs[i].y-240.0)*(0.73); //261 cm/ 356 pixel  // 65cm/110 pixel
+        double y_normalized=(240.0-blobsIn.blobs[i].y)*(0.73); //261 cm/ 356 pixel  // 65cm/110 pixel
 
         camera_points.push_back(Eigen::Vector2d(x_normalized,y_normalized).transpose());
         ROS_INFO("here %i x,%G=%G\n",i,camera_points[i][0],read_points[i][0]);
@@ -265,7 +265,10 @@ void online_tf::OptimalRigidTransformation(Eigen::MatrixXd startP, Eigen::Matrix
 
     Eigen::RowVector2d centroid_startP=Eigen::RowVector2d::Zero(); 
     Eigen::RowVector2d centroid_finalP=Eigen::RowVector2d::Zero(); //= mean(B);
-    double numerator,denominator,yaw;
+    double numerator,denominator,yaw_;
+    numerator=0;
+    denominator=0;
+    yaw_=0;
     //calculate the mean
     for (int i=0;i<startP.rows();i++)
     {   centroid_startP=centroid_startP+startP.row(i);
@@ -277,15 +280,17 @@ void online_tf::OptimalRigidTransformation(Eigen::MatrixXd startP, Eigen::Matrix
     centroid_startP=centroid_startP/startP.rows();
     centroid_finalP=centroid_finalP/startP.rows();
     Eigen::RowVector2d trasl;
-    trasl=centroid_finalP-centroid_startP;
-    yaw=atan2(numerator,denominator);
-            
-  
-    ROS_INFO("yaw %G: x %G: y %G:",yaw,trasl(0),trasl(1));
+    yaw_=atan2(numerator,denominator);
+    Eigen::Matrix2d matYaw = Eigen::Matrix2d::Zero();
+    matYaw << cos(yaw_), -sin(yaw_),
+    sin(yaw_), cos(yaw_);
 
-    
+    trasl=centroid_finalP-centroid_startP*matYaw;
+  
+    ROS_INFO("yaw %G: x %G: y %G:",-yaw_,trasl(0),trasl(1));
+
 	tf::Quaternion mat_rot;  
-    mat_rot.setRPY(0,0,yaw);
+    mat_rot.setRPY(0,0,-yaw_);
 
 
     transfParameters<<trasl(0),trasl(1),0,mat_rot.x(),mat_rot.y(),mat_rot.z(),mat_rot.w();
