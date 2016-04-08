@@ -191,8 +191,8 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
             read_points.push_back(Eigen::Vector2d(map_points(1,0),map_points(1,1)).transpose());
         else if (blobsIn.blobs[i].name=="GreenRectangle")
             read_points.push_back(Eigen::Vector2d(map_points(2,0),map_points(2,1)).transpose());
-        double x_normalized=(blobsIn.blobs[i].x-320.0)*(134.0/320);
-        double y_normalized=(240.0-blobsIn.blobs[i].y)*(94.0/240);
+        double x_normalized=(blobsIn.blobs[i].x-320.0)*(0.8);//261 cm/310 pixel
+        double y_normalized=(blobsIn.blobs[i].y-240.0)*(0.73); //261 cm/ 356 pixel  // 65cm/110 pixel
 
         camera_points.push_back(Eigen::Vector2d(x_normalized,y_normalized).transpose());
         ROS_INFO("here %i x,%G=%G\n",i,camera_points[i][0],read_points[i][0]);
