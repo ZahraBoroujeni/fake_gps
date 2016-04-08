@@ -8,7 +8,7 @@
 		<param name="camera_frame_id" value="usb_cam" />
 		<param name="io_method" value="mmap" />
 		<param name="autoexposure" value="false" />
-        <param name="exposure" value="8"/>
+        <param name="exposure" value="1"/>
         />
 	</node>
 <!-- 	<node name="image_view" pkg="image_view" type="image_view" respawn="false" output="screen">
@@ -16,7 +16,7 @@
     <param name="autosize" value="true" />
   </node> -->
 
-	<node name="image_proc" pkg="image_proc" type="image_proc" ns="usb_cam" required="true" output="screen">
+	<node name="image_proc" pkg="image_proc" type="image_proc" ns="usb_cam" required="true">
 	
 	</node>
 
@@ -31,9 +31,9 @@
 		<param name="spatial_radius_pix" value="0" />
 		<param name="debug_on" value="false" />
 	</node>
-	<node pkg="detect_roof_rectangles" type="detect" name="detect" output="screen" />
+	<node pkg="detect_roof_rectangles" type="detect" name="detect"/>
 
-  <node pkg="fake_gps" type="fake_gps_3d_node" name="fake_gps_3d" args="0 1 2" output="screen">
+  <node pkg="fake_gps" type="fake_gps_2d_node" name="fake_gps_2d" args="0 1 2">
     <param name="map_file" value="$(find fake_gps)/config/FEATURE_FILES/map.txt" />
     <param name="camera_file" value="$(find fake_gps)/config/FEATURE_FILES/camera.txt" />
     <param name="start_frame" value="/world" />

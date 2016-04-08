@@ -11,7 +11,7 @@
 #include "kalman_2d.h"
 #include <math.h>
 
-#include "fake_gps/Transform.h"
+#include "geometry_msgs/Transform.h"
 #include <Eigen/Eigen>
 #include <cmvision/Blobs.h>
 
@@ -79,7 +79,7 @@ class online_tf
                 max_id=marker_id[i];
         }
 
-        pub_transform_= nh.advertise<fake_gps::Transform>(nh.resolveName("Transform"), 10);
+        pub_transform_= nh.advertise<geometry_msgs::Transform>(nh.resolveName("Transform"), 10);
         pub_markers_= nh.advertise<visualization_msgs::MarkerArray>(nh.resolveName("/Features_markers"), 1);
         
         read_map_coordinates(map_file_path,max_id);
@@ -191,12 +191,12 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
             read_points.push_back(Eigen::Vector2d(map_points(1,0),map_points(1,1)).transpose());
         else if (blobsIn.blobs[i].name=="GreenRectangle")
             read_points.push_back(Eigen::Vector2d(map_points(2,0),map_points(2,1)).transpose());
-        double x_normalized=(blobsIn.blobs[i].x-320.0)*(0.8);//261 cm/310 pixel
-        double y_normalized=(240.0-blobsIn.blobs[i].y)*(0.73); //261 cm/ 356 pixel  // 65cm/110 pixel
+        double x_normalized=(blobsIn.blobs[i].x-320.0)*(0.759);//261 cm/310 pixel
+        double y_normalized=(blobsIn.blobs[i].y-240.0)*(0.70); //261 cm/ 356 pixel  // 65cm/110 pixel
 
         camera_points.push_back(Eigen::Vector2d(x_normalized,y_normalized).transpose());
-        ROS_INFO("here %i x,%G=%G\n",i,camera_points[i][0],read_points[i][0]);
-        ROS_INFO("here %i y,%G=%G\n",i,camera_points[i][1],read_points[i][1]);
+//        ROS_INFO("here %i x,%G=%G\n",i,camera_points[i][0],read_points[i][0]);
+ //       ROS_INFO("here %i y,%G=%G\n",i,camera_points[i][1],read_points[i][1]);
        
     }
     
@@ -244,13 +244,15 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
     tr.setRotation( tf::Quaternion(transfParameters(3),transfParameters(4),transfParameters(5),transfParameters(6)));
 
 
-    fake_gps::Transform msg_t;
+    
+    geometry_msgs::Transform msg_t;
 
-    msg_t.header.stamp = ros::Time::now();
+   // msg_t.header.stamp = ros::Time::now();
 
-    tf::transformTFToMsg(tr,msg_t.Transf);
+    //tf::transformTFToMsg(tr,msg_t.Transf);
+    tf::transformTFToMsg(tr,msg_t);
     pub_transform_.publish(msg_t);
-    pub_markers_.publish(feature_markers_);
+
 
     tf_broadcaster_.sendTransform(tf::StampedTransform(tr, ros::Time::now(), start_frame.c_str(), end_frame.c_str()));
  
@@ -287,7 +289,7 @@ void online_tf::OptimalRigidTransformation(Eigen::MatrixXd startP, Eigen::Matrix
 
     trasl=centroid_finalP-centroid_startP*matYaw;
   
-    ROS_INFO("yaw %G: x %G: y %G:",-yaw_,trasl(0),trasl(1));
+//    ROS_INFO("yaw %G: x %G: y %G:",-yaw_,trasl(0),trasl(1));
 
 	tf::Quaternion mat_rot;  
     mat_rot.setRPY(0,0,-yaw_);
