@@ -79,7 +79,7 @@ class online_tf
                 max_id=marker_id[i];
         }
 
-        pub_transform_= nh.advertise<fake_gps::Transform>(nh.resolveName("transform"), 10);
+        pub_transform_= nh.advertise<fake_gps::Transform>(nh.resolveName("Transform"), 10);
         pub_markers_= nh.advertise<visualization_msgs::MarkerArray>(nh.resolveName("/Features_markers"), 1);
         
         read_map_coordinates(map_file_path,max_id);
