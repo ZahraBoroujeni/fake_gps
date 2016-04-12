@@ -59,7 +59,7 @@ class online_tf
     // callback functions
     void calculate_tf(const cmvision::Blobs& blobsIn);
    
-   void OptimalRigidTransformation(Eigen::MatrixXd startP, Eigen::MatrixXd finalP);
+   void OptimalRigidTransformation(Eigen::MatrixXd worldP, Eigen::MatrixXd cameraP);
 
 
     // constructor
@@ -190,46 +190,47 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
         else if (blobsIn.blobs[i].name=="BlueRectangle")
             read_points.push_back(Eigen::Vector2d(map_points(1,0),map_points(1,1)).transpose());
         else if (blobsIn.blobs[i].name=="GreenRectangle")
-            read_points.push_back(Eigen::Vector2d(map_points(2,0),map_points(2,1)).transpose());
+             read_points.push_back(Eigen::Vector2d(map_points(2,0),map_points(2,1)).transpose());
         double x_normalized=(blobsIn.blobs[i].x-320.0)*(0.759);//261 cm/310 pixel
-        double y_normalized=(blobsIn.blobs[i].y-240.0)*(0.70); //261 cm/ 356 pixel  // 65cm/110 pixel
-
+        double y_normalized=(240.0-blobsIn.blobs[i].y)*(0.70); //261 cm/ 356 pixel  // 65cm/110 pixel
+         //double x_normalized=(blobsIn.blobs[i].x-320.0)*(243.0/320);
+        //double y_normalized=(blobsIn.blobs[i].y-240.0)*(169.0/240);
         camera_points.push_back(Eigen::Vector2d(x_normalized,y_normalized).transpose());
-//        ROS_INFO("here %i x,%G=%G\n",i,camera_points[i][0],read_points[i][0]);
- //       ROS_INFO("here %i y,%G=%G\n",i,camera_points[i][1],read_points[i][1]);
+    //  ROS_INFO("here %i x,%G=%G\n",i,camera_points[i][0],read_points[i][0]);
+    //  ROS_INFO("here %i y,%G=%G\n",i,camera_points[i][1],read_points[i][1]);
        
     }
     
-    Eigen::MatrixXd startP, finalP;
-    startP.resize(blobsIn.blob_count, 2);
-    finalP.resize(blobsIn.blob_count, 2);
+    Eigen::MatrixXd worldP, cameraP;
+    worldP.resize(blobsIn.blob_count, 2);
+    cameraP.resize(blobsIn.blob_count, 2);
 
     for(int i = 0; i < blobsIn.blob_count; ++i)
     {
-        startP.row(i) = read_points[i];
-        finalP.row(i) = camera_points[i];
+        worldP.row(i) = read_points[i];
+        cameraP.row(i) = camera_points[i];
     }
     
     // for (int i=0;i<numrows;i++)
     // {
-    //     ROS_INFO(" id %i,start %G= final %G\n",i,startP(i,1),finalP(i,1));
-    //     ROS_INFO(" id %i,start %G= final %G\n",i,startP(i,0),finalP(i,0));
-    //     ROS_INFO(" id %i,start %G= final %G\n",i,startP(i,2),finalP(i,2));
+    //     ROS_INFO(" id %i,start %G= final %G\n",i,worldP(i,1),cameraP(i,1));
+    //     ROS_INFO(" id %i,start %G= final %G\n",i,worldP(i,0),cameraP(i,0));
+    //     ROS_INFO(" id %i,start %G= final %G\n",i,worldP(i,2),cameraP(i,2));
     // }
     
     // if (filter.getFirst()==0)
     // {   
     //     filter.setFirst(1);
-    //     OptimalRigidTransformation(finalP,startP);
+    //     OptimalRigidTransformation(cameraP,worldP);
     //      ROS_INFO("here ");
     //     filter.setKalman_x(Eigen::Vector3d(transfParameters(0),transfParameters(1),transfParameters(5)));
     //    // printf("%f\n", transfParameters(0));
     // }       
     // else
     // {   
-    //     //OptimalRigidTransformation(finalP,startP);
-    //     filter.prediction(startP);
-    //     kalman_result=filter.update(finalP);
+    //     //OptimalRigidTransformation(cameraP,worldP);
+    //     filter.prediction(worldP);
+    //     kalman_result=filter.update(cameraP);
     //     float yaw_ =kalman_result[3];
     //     Eigen::Matrix3d matYaw = Eigen::Matrix3d::Zero();
     //     matYaw << cos(yaw_), -sin(yaw_), 0.0f,
@@ -239,7 +240,7 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
     //     transfParameters<<kalman_result[0],kalman_result[1],0,mat_rot.x(),mat_rot.y(),mat_rot.z(),mat_rot.w();
     // }
 
-    OptimalRigidTransformation(finalP,startP);
+    OptimalRigidTransformation(worldP,cameraP);
     tr.setOrigin( tf::Vector3(transfParameters(0),transfParameters(1),transfParameters(2)));
     tr.setRotation( tf::Quaternion(transfParameters(3),transfParameters(4),transfParameters(5),transfParameters(6)));
 
@@ -258,41 +259,57 @@ void online_tf::calculate_tf(const cmvision::Blobs& blobsIn)
  
 }
 
-void online_tf::OptimalRigidTransformation(Eigen::MatrixXd startP, Eigen::MatrixXd finalP)
+void online_tf::OptimalRigidTransformation(Eigen::MatrixXd worldP, Eigen::MatrixXd cameraP)
 {   
-    if (startP.rows()!=finalP.rows())
-    {   ROS_ERROR("The number of rows of startP and finalP have to be the same");
+    if (worldP.rows()!=cameraP.rows())
+    {   ROS_ERROR("The number of rows of worldP and finalP have to be the same");
         exit(1);
     }
 
-    Eigen::RowVector2d centroid_startP=Eigen::RowVector2d::Zero(); 
-    Eigen::RowVector2d centroid_finalP=Eigen::RowVector2d::Zero(); //= mean(B);
+    Eigen::RowVector2d centroid_worldP=Eigen::RowVector2d::Zero(); 
+    Eigen::RowVector2d centroid_cameraP=Eigen::RowVector2d::Zero(); //= mean(B);
     double numerator,denominator,yaw_;
     numerator=0;
     denominator=0;
     yaw_=0;
     //calculate the mean
-    for (int i=0;i<startP.rows();i++)
-    {   centroid_startP=centroid_startP+startP.row(i);
-        centroid_finalP=centroid_finalP+finalP.row(i);
-        numerator= numerator+(finalP(i,0)*startP(i,1)-finalP(i,1)*startP(i,0));
-        denominator=denominator+(finalP(i,0)*startP(i,0)+finalP(i,1)*startP(i,1));
+    for (int i=0;i<worldP.rows();i++)
+    {   centroid_worldP=centroid_worldP+worldP.row(i);
+        centroid_cameraP=centroid_cameraP+cameraP.row(i);       
+    }
+    centroid_worldP=centroid_worldP/worldP.rows();
+    centroid_cameraP=centroid_cameraP/worldP.rows();
+    
+    for (int i=0;i<worldP.rows();i++)
+    {   worldP.row(i)=worldP.row(i)-centroid_worldP;
+        cameraP.row(i)=cameraP.row(i)-centroid_cameraP;
+        numerator= numerator+cameraP(i,0)*worldP(i,1)-cameraP(i,1)*worldP(i,0);
+        denominator=denominator+cameraP(i,0)*worldP(i,0)+cameraP(i,1)*worldP(i,1);   
     }
     
-    centroid_startP=centroid_startP/startP.rows();
-    centroid_finalP=centroid_finalP/startP.rows();
-    Eigen::RowVector2d trasl;
     yaw_=atan2(numerator,denominator);
+
+    if (worldP.rows()==3)
+        ROS_INFO("yaw: %G ,n: %G, d: %G",yaw_,numerator,denominator);
+    else
+        ROS_ERROR("yaw: %G ,n: %G, d: %G",yaw_,numerator,denominator);
+
     Eigen::Matrix2d matYaw = Eigen::Matrix2d::Zero();
     matYaw << cos(yaw_), -sin(yaw_),
     sin(yaw_), cos(yaw_);
-
-    trasl=centroid_finalP-centroid_startP*matYaw;
+        
+    Eigen::Vector2d trasl;
+    trasl=centroid_worldP.transpose()-matYaw*centroid_cameraP.transpose();
   
 //    ROS_INFO("yaw %G: x %G: y %G:",-yaw_,trasl(0),trasl(1));
-
-	tf::Quaternion mat_rot;  
-    mat_rot.setRPY(0,0,-yaw_);
+       if (worldP.rows()==3)
+         ROS_INFO("matYaw %G: x %G: y %G:",matYaw.determinant(),trasl(0),trasl(1));
+       else
+         ROS_ERROR("yaw %G: x %G: y %G:",matYaw.determinant(),trasl(0),trasl(1));
+    Eigen::Matrix3d R_new = Eigen::Matrix3d::Identity();
+    R_new.block<2,2>(0,0)=matYaw;
+	Eigen::Quaterniond mat_rot(R_new);  
+    //mat_rot.setRPY(0,0,-yaw_);
 
 
     transfParameters<<trasl(0),trasl(1),0,mat_rot.x(),mat_rot.y(),mat_rot.z(),mat_rot.w();
